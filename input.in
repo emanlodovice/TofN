@@ -1,4 +1,4 @@
-for (int i=0; i + 2 < 5; k += i, ++i, r = 2) {
+for (c = 2, int i=0, int b = i; i + 2 < 5; k += i, ++i, r = 2) {
   b = 1;
   b++;
   c += 1;
@@ -11,6 +11,8 @@ for (int i=0; i + 2 < 5; k += i, ++i, r = 2) {
   }
 }
 
-for(int k;;k++);
+for (int n = 5; n > 1; n--) {}
 
-for (k = 0; k < n; k++) {}
+for (int i = 1; i < n; i *= 2) {}
+
+for (int i = 1; i <= n; i = i * 2) {}

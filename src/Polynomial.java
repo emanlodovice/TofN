@@ -1,41 +1,7 @@
 
 import java.util.ArrayList;
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-/**
- *
- * @author eman
- */
 public class Polynomial {
-    public static void main(String[] args) throws CloneNotSupportedException {
-        Normal a = new Normal('a', 1);
-        Normal b = new Normal('a', 1);
-        Log log = new Log(1, null, 1);
-        Variable v = log;
-        Object c = b;
-        System.out.println(c.getClass());
-        Term aa = new Term(2, 1, 'x', 2);
-        Term bb = new Term(-1, 1, 'x', 2);
-//        Term aa = new Term(2, 1);
-//        Term bb = new Term(-1, 1);
-        ArrayList<Variable> withLog = new ArrayList<Variable>();
-        withLog.add(new Log(1, aa.add(bb), 1));
-        Term cc = new Term(1, 1, withLog);
-        System.out.println(aa.add(bb) + " add");
-        System.out.println(aa.multiply(bb) + " multiply");
-        System.out.println(aa.divide(bb) + " divide");
-        Term x = new Term(1, 1, 'x', 1);
-        ArrayList<Term> ts = new ArrayList<>();
-        ts.add(x);
-        Polynomial p = new Polynomial(ts);
-        System.out.println(p.substitute(aa.divide(bb), 'x') + " substitute");
-        
-    }
-    
     ArrayList<Term> terms;
     public static int ctr = 0;
     
@@ -47,12 +13,91 @@ public class Polynomial {
         this.terms = new ArrayList<>();
     }
     
+    public Polynomial(Term t) {
+        this.terms = new ArrayList<>();
+        this.terms.add(t);
+    }
+    
+    public Polynomial(String input) {
+        this.terms = new ArrayList<>();        
+        Term t = null;
+        boolean previsTimes = false;
+        int op = 1;
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '-' || c == '+') {
+                if (t == null) {
+                    t = new Term((c == '-') ? -1 : 1);
+                }   else {
+                    if (previsTimes) {
+                        t = t.multiply(new Term((c == '-') ? -1 : 1)).terms.get(0);
+                        previsTimes = false;
+                    }   else {
+                        terms.add(t);
+                        t = new Term((c == '-') ? -1 : 1);
+                    }
+                }
+                previsTimes = false;
+            }   else if (c == '*' || c == '/') {
+                previsTimes = true;
+                op = (c == '*') ? 1 : 0;
+            }   else {
+                if (c != ' ') {
+                    previsTimes = false;
+                    if (t == null) {
+                        t = new Term(1);
+                    }
+                    Term toOp = null;
+                    if (Character.isAlphabetic(c)) {
+                        toOp = new Term(1, 1, c, 1);
+                    }   else {
+                        toOp = new Term(Integer.parseInt(c + ""));
+                    }
+                    if (op == 1) {
+                        t = t.multiply(toOp).terms.get(0);
+                    }   else {
+                        t = t.divide(toOp).terms.get(0);
+                    }
+                }
+            }
+        }
+        if (t != null) {
+            terms.add(t);
+        }        
+        
+    }
+    
     public void addTerm(Term term) {
         this.terms.add(term.clone());
     }
     
     public void simplify() {
-        
+        ArrayList<Term> simped = new ArrayList<>();
+        String added="";
+        for (int i=0; i < this.terms.size(); i++) {
+            if (!added.contains("-" + i + "-")) {
+                Term t = this.terms.get(i);
+                for (int j = i + 1; j < this.terms.size(); j++) {
+                    if (!added.contains("-" + j + "-")) {
+                        Term tt = this.terms.get(j);
+                        if (t.variables.equals(tt.variables)) {
+                            Polynomial res = t.add(tt);
+                            if (res.terms.size() > 0) {
+                                t = t.add(tt).terms.get(0);
+                            }   else {
+                                t = null;
+                            }
+                            added += "-" + j + "-";
+                        }
+                    }
+                }
+                if (t != null) {
+                    simped.add(t);
+                }
+                added += "-" + i + "-";
+            }
+        }
+        this.terms = simped;
     }
     
     public Polynomial add(Polynomial p) {
@@ -76,26 +121,77 @@ public class Polynomial {
         for (Term t1: this.terms) {
             for (Term t2: p.terms) {
                 Polynomial prod = t1.multiply(t2);
-                System.out.println(prod + " prod");
                 res = res.add(prod);
             }
         }
         return res;
     }
     
-    public Polynomial divide(Polynomial p) {
-        return null;
+    public Polynomial multiply(Polynomial p, char var) {
+        Polynomial res = new Polynomial();
+        for (Term t1: this.terms) {
+            if (!t1.hasVariable(var)) {
+                for (Term t2: p.terms) {
+                    Polynomial prod = t1.multiply(t2);
+                    res = res.add(prod);
+                }
+            }   else {
+                res.addTerm(t1.clone());
+            }
+        }
+        return res;
+    }
+    
+    public Polynomial divide(Term t) {
+        Polynomial res = new Polynomial();
+        if (t.num == 0) {
+            return new Polynomial(new Term(0));
+        }
+        for (Term t1: this.terms) {            
+            Polynomial prod = t1.divide(t);
+            res = res.add(prod);
+        }
+        return res;
     }
     
     public Polynomial substitute(Polynomial p, char v) {
-        System.out.println(this + " this");
-        System.out.println(p + " p");
         Polynomial res = new Polynomial();
         for(Term t: this.terms) {
-            System.out.println("Substitute term");
             res = res.add(t.substitute(p, v));
         }
         return res;
+    }
+    
+    public int direction(int var) {
+        int direction = 0;
+        for (Term t: this.terms) {
+            boolean hasThisVar = false;
+            for (Variable v: t.variables) {
+                if (v.getClass().getSimpleName().contentEquals("Normal")) {
+                    if (((Normal)v).var == var) {
+                        hasThisVar = true;
+                        break;
+                    }
+                }
+            }
+            if (hasThisVar) {
+                double coef = t.num / ((1.0) * t.den);
+                if (coef > 1.0) {
+                    direction = 1;
+                    break;
+                }   else if (coef < 1.0 && coef != -1.0) {
+                    direction = -1;
+                    break;
+                }
+            }   else {
+                if (t.num / ((1.0) * t.den) > 0) {
+                    direction = 1;
+                }   else {
+                    direction = -1;
+                }
+            }
+        }
+        return direction;
     }
     
     
@@ -175,6 +271,9 @@ class Term {
         Polynomial p = new Polynomial();
         int num = this.num * t.num;
         int den = this.den * t.den;
+        if (num == 0 || den == 0) {
+            return new Polynomial(new Term(0));
+        }
         int gcf = Term.gcf(num, den);
         num /= gcf;
         den /= gcf;
@@ -219,6 +318,9 @@ class Term {
         Polynomial p = new Polynomial();
         int num = this.num * t.den;
         int den = this.den * t.num;
+        if (num == 0 || den == 0) {
+            return new Polynomial(new Term(0));
+        }
         int gcf = Term.gcf(num, den);
         num /= gcf;
         den /= gcf;
@@ -265,24 +367,27 @@ class Term {
     }
     
     public Polynomial substitute(Polynomial p, char var) {
-        System.out.println(Polynomial.ctr + " ctr");
         Polynomial.ctr++;
         Polynomial pp = new Polynomial();
         Term t = new Term(this.num, this.den);
-        System.out.println(t.num + " t " + t.den);
-        pp.addTerm(t);        
-        System.out.println(pp.terms + " here");
+        pp.addTerm(t);
         for (Variable v: this.variables) {
-            Polynomial temp = v.substitute(p, var); 
-            System.out.println(pp + " pp");
-            System.out.println(temp + " temp");
+            Polynomial temp = v.substitute(p, var);
             pp = pp.multiply(temp);
-            System.out.println(pp + " ppp");
         }
-        System.out.println(pp + " pp res");
         return pp;
     }
     
+    public boolean hasVariable(char var) {
+        for (Variable v: this.variables) {
+            if (v.getClass().getSimpleName().contentEquals("Normal")) {
+                if (((Normal)v).var == var) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     public static int gcf(int num, int num2) {        
         int min = Math.abs(Math.min(num, num2));
         while(true) {
@@ -298,8 +403,10 @@ class Term {
     @Override
     public String toString() {
         String res = "";
-        if (this.num != 0 || this.den != 0) {
-            res = this.num + ((this.den == 1) ? "" : "/" + this.den);
+        if ((this.num != 0 || this.den != 0)) {
+            if (!(this.num == 1 && this.den == 1 && this.variables.size() > 0)) {
+                res = this.num + ((this.den == 1) ? "" : "/" + this.den);
+            }
             for (Variable var: this.variables) {
                 res += var;
             }
@@ -358,7 +465,7 @@ class Normal implements Variable {
     @Override
     public String toString() {
         if (degree != 0) {
-            return var + "^" + degree;
+            return var + ((degree != 1) ? "^" + degree: "");
         }
         return "";
     }
@@ -417,7 +524,6 @@ class Log implements Variable {
 
     @Override
     public Polynomial substitute(Polynomial p, char v) {
-        System.out.println(p + " Log");
         Polynomial pp = new Polynomial();
         Log clone = this.clone();
         clone.ex = this.ex.substitute(p, v);
